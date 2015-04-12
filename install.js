@@ -9,6 +9,8 @@ const GNU_TOOLS = require("./gnu-tools");
 const PATH = require("path");
 const FS = require("fs");
 const OS = require("os");
+const EXISTS_SYNC = FS.existsSync || PATH.existsSync
+const EXISTS = FS.exists || PATH.exists
 
 /* Basic workflow is this:
 Are we on Solaris?
@@ -16,13 +18,13 @@ Are we on Solaris?
   2. No: let's look for find and grep commands; also grep needs PCRE
    a. We found them! Nothing else is needed here.
    b. We did not find them! Look for the sources in the gnu-tools package
-     * No sources found! Do `exec npm install` and set cwd()/../ to current gnu-tools dir 
+     * No sources found! Do `exec npm install` and set cwd()/../ to current gnu-tools dir
 */
 
 function main() {
 
     var binBasePath = PATH.join(__dirname, "/bin");
-    if (!PATH.existsSync(binBasePath)) {
+    if (!EXISTS_SYNC(binBasePath)) {
         console.log("Creating directory ", binBasePath);
         FS.mkdir(binBasePath, 0755);
     } else {
@@ -52,9 +54,9 @@ function main() {
                     // Grab sources from npm (if necessary)
                     compileSources(function (err) {
                         if (err) fail(err);
-  
+
                         // All Done.
-                        
+
                         process.exit(0);
                     });
                 }
@@ -63,13 +65,13 @@ function main() {
 
                     // Link to commands on PATH.
                     if (find !== true) {
-                        if (!PATH.existsSync(GNU_TOOLS.FIND_CMD)) {
+                        if (!EXISTS_SYNC(GNU_TOOLS.FIND_CMD)) {
                             console.log("Linking ", find, " to ", GNU_TOOLS.FIND_CMD);
                             FS.symlinkSync(find, GNU_TOOLS.FIND_CMD);
                         }
                     }
                     if (grep !== true) {
-                        if (!PATH.existsSync(GNU_TOOLS.GREP_CMD)) {
+                        if (!EXISTS_SYNC(GNU_TOOLS.GREP_CMD)) {
                             console.log("Linking ", grep, " to ", GNU_TOOLS.GREP_CMD);
                             FS.symlinkSync(grep, GNU_TOOLS.GREP_CMD);
                         }
@@ -88,15 +90,15 @@ function fail(err) {
 }
 
 function commandExists(name, callback) {
-    
+
     if (name === "grep") {
-        if (PATH.existsSync(GNU_TOOLS.GREP_CMD)) {
+        if (EXISTS_SYNC(GNU_TOOLS.GREP_CMD)) {
             callback(null, true);
             return;
         }
     } else
     if (name === "find") {
-        if (PATH.existsSync(GNU_TOOLS.FIND_CMD)) {
+        if (EXISTS_SYNC(GNU_TOOLS.FIND_CMD)) {
             callback(null, true);
             return;
         }
@@ -115,7 +117,7 @@ function commandExists(name, callback) {
 
         var path = stdout.split("\n")[0].trim();
 
-        PATH.exists(path, function(exists) {
+        EXISTS(path, function(exists) {
             if (!exists) {
                 callback(null, false);
                 return;
@@ -131,10 +133,10 @@ function checkPCRE(grep, callback) {
         callback(null, false);
         return;
     }
-        
+
     EXEC("grep -P", function (error, stdout, stderr) {
         var firstLine = stderr.split("\n")[0];
-        
+
         // if -P is invalid, then grep isn't supporting PCRE
         if (firstLine.match(/invalid option/)) {
             callback(null, false);
@@ -170,7 +172,7 @@ function runMake(args, callback) {
 
 function compileSources(callback) {
     // check if sources already exist; don't get them below if it's not needed
-    if (PATH.existsSync("./findutils-src") && PATH.existsSync("./grep-src") && PATH.existsSync("./pcre-src")) {
+    if (EXISTS_SYNC("./findutils-src") && EXISTS_SYNC("./grep-src") && EXISTS_SYNC("./pcre-src")) {
 
         // Compile from source.
         runMake([
@@ -211,7 +213,7 @@ function compileSources(callback) {
         }
 
         // Swap out new gnu-tools for our current one.
-        
+
         var dirname = __dirname;
 
         FS.renameSync(PATH.join(dirname, "node_modules", "gnu-tools"), PATH.join(dirname, "..", "gnu-tools~src"));
